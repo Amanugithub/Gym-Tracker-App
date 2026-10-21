@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS workouts (
   id                  TEXT NOT NULL,
   status              TEXT NOT NULL CHECK (status IN ('completed', 'abandoned')),
   started_at          TIMESTAMPTZ NOT NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   ended_at            TIMESTAMPTZ NOT NULL,
   timezone_id         TEXT NOT NULL,
   bodyweight_kg       DOUBLE PRECISION CHECK (bodyweight_kg IS NULL OR bodyweight_kg > 0),

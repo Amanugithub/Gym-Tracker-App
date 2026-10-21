@@ -92,9 +92,9 @@ export async function pushSync(
     for (const workout of payload.workouts) {
       await client.query(
         `INSERT INTO workouts
-          (user_id, id, status, started_at, ended_at, timezone_id,
+          (user_id, id, status, started_at, created_at, ended_at, timezone_id,
            bodyweight_kg, local_date, note, client_updated_at, updated_at, deleted_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), $11)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), $12)
          ON CONFLICT (user_id, id) DO UPDATE SET
            note = EXCLUDED.note,
            client_updated_at = EXCLUDED.client_updated_at,
@@ -105,6 +105,7 @@ export async function pushSync(
           workout.id,
           workout.status,
           workout.startedAt,
+          workout.createdAt,
           workout.endedAt,
           workout.timezoneId,
           workout.bodyweightKg,
@@ -183,7 +184,7 @@ export async function pullSync(
   );
   const bodyWeightEntries = await database.query(
     `SELECT id, weight_kg AS "weightKg", measured_at AS "measuredAt",
-            timezone_id AS "timezoneId", local_date AS "localDate",
+            timezone_id AS "timezoneId", local_date::text AS "localDate",
             measured_at AS "createdAt",
             client_updated_at AS "clientUpdatedAt", updated_at AS "updatedAt",
             deleted_at AS "deletedAt"
@@ -195,7 +196,7 @@ export async function pullSync(
   const workouts = await database.query<{ id: string }>(
     `SELECT id, status, started_at AS "startedAt", ended_at AS "endedAt",
             timezone_id AS "timezoneId", bodyweight_kg AS "bodyweightKg",
-            local_date AS "localDate", note,
+            local_date::text AS "localDate", note, created_at AS "createdAt",
             client_updated_at AS "clientUpdatedAt", updated_at AS "updatedAt",
             deleted_at AS "deletedAt"
      FROM workouts
