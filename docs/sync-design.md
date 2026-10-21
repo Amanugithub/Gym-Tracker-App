@@ -1,6 +1,6 @@
 # Gym Tracker sync design
 
-Status: backend foundation
+Status: backend foundation and local sync connection
 
 ## Ownership
 
@@ -60,7 +60,6 @@ workouts, workout exercises, and sets. A missing cursor requests a full restore.
 
 ## Next backend slice
 
-1. Configure Google ID-token verification.
-2. Add the mobile outbox and server cursor to SQLite.
-3. Connect the app's Sync now action to push and pull.
-4. Test reinstall restore and duplicate/retry uploads.
+1. Add durable pending-sync status and automatic retry.
+2. Test reinstall restore and duplicate/retry uploads.
+3. Configure Google ID-token verification when account auth is resumed.

@@ -27,7 +27,7 @@ Authentication, API synchronization, leaderboards, templates, and nutrition are 
 - Only `completed` workouts count toward progress and consistency.
 - An `active` workout can be resumed.
 - An `abandoned` workout remains stored but contributes to no calculations.
-- A completed workout may be edited later.
+- A completed or abandoned workout is locked; only its note may be edited later.
 - A workout may start with no exercises selected.
 - Exercises can be added at any point while a workout is active.
 - A workout must contain at least one set before it can be completed.

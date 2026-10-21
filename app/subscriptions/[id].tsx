@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 
 import { summarizeWorkout } from "@/src/domain/progress";
-import { formatWeight, weightToKg } from "@/src/domain/units";
+import { formatWeight } from "@/src/domain/units";
 import type { Unit, Workout } from "@/src/db/types";
 import { ProfileRepository } from "@/src/repositories/profile-repository";
 import { WorkoutRepository } from "@/src/repositories/workout-repository";
@@ -29,10 +20,6 @@ export default function WorkoutDetailsScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [unit, setUnit] = useState<Unit>("kg");
-  const [editingSetId, setEditingSetId] = useState<string | null>(null);
-  const [weight, setWeight] = useState("");
-  const [reps, setReps] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -60,70 +47,6 @@ export default function WorkoutDetailsScreen() {
       mounted = false;
     };
   }, [db, id]);
-
-  async function reloadWorkout() {
-    if (!id) return;
-    const loaded = await new WorkoutRepository(db).getWorkout(id);
-    if (loaded) setWorkout(loaded);
-  }
-
-  function beginEditingSet(set: Workout["sets"][number]) {
-    setEditingSetId(set.id);
-    setWeight(formatWeight(set.weightKg, unit));
-    setReps(String(set.reps));
-  }
-
-  function cancelEditingSet() {
-    setEditingSetId(null);
-    setWeight("");
-    setReps("");
-  }
-
-  async function saveEditedSet() {
-    if (!workout || !editingSetId) return;
-    const currentSet = workout.sets.find((set) => set.id === editingSetId);
-    if (!currentSet) return;
-
-    const parsedWeight = weightToKg(Number(weight), unit);
-    const parsedReps = Number(reps);
-    if (!Number.isFinite(parsedWeight) || parsedWeight < 0) return;
-    if (!Number.isInteger(parsedReps) || parsedReps < 1) return;
-
-    setIsSaving(true);
-    try {
-      await new WorkoutRepository(db).updateSet({
-        id: currentSet.id,
-        workoutId: workout.id,
-        exerciseId: currentSet.exerciseId,
-        setType: currentSet.setType,
-        weightKg: parsedWeight,
-        reps: parsedReps,
-        rpe: currentSet.rpe,
-      });
-      cancelEditingSet();
-      await reloadWorkout();
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function confirmDeleteSet(setId: string) {
-    if (!workout) return;
-    Alert.alert("Delete set?", "This set will be removed from the workout.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          void (async () => {
-            await new WorkoutRepository(db).deleteSet(workout.id, setId);
-            if (editingSetId === setId) cancelEditingSet();
-            await reloadWorkout();
-          })();
-        },
-      },
-    ]);
-  }
 
   if (isLoading) {
     return (
@@ -160,41 +83,9 @@ export default function WorkoutDetailsScreen() {
       </Text>
       {workout.note ? <Text style={styles.note}>{workout.note}</Text> : null}
 
-      {editingSetId ? (
-        <View style={styles.editCard}>
-          <Text style={styles.editTitle}>Edit set</Text>
-          <View style={styles.editInputs}>
-            <TextInput
-              value={weight}
-              onChangeText={setWeight}
-              keyboardType="decimal-pad"
-              placeholder={`Weight ${unit}`}
-              placeholderTextColor="#8b8d96"
-              style={styles.editInput}
-            />
-            <TextInput
-              value={reps}
-              onChangeText={setReps}
-              keyboardType="number-pad"
-              placeholder="Reps"
-              placeholderTextColor="#8b8d96"
-              style={styles.editInput}
-            />
-          </View>
-          <View style={styles.editActions}>
-            <Pressable onPress={cancelEditingSet} style={styles.cancelButton}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => void saveEditedSet()}
-              disabled={isSaving}
-              style={styles.saveButton}
-            >
-              <Text style={styles.saveText}>Save changes</Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : null}
+      <Text style={styles.lockedMessage}>
+        This workout is finished. Its performance records cannot be changed.
+      </Text>
 
       {workout.exercises.map((exercise) => {
         const sets = workout.sets.filter(
@@ -212,16 +103,6 @@ export default function WorkoutDetailsScreen() {
                   <Text style={styles.setText}>
                     {set.setType === "warmup" ? "Warm-up" : "Working"} · {formatWeight(set.weightKg, unit)} {unit} × {set.reps} reps
                   </Text>
-                  {workout.status === "completed" ? (
-                    <View style={styles.setActions}>
-                      <Pressable onPress={() => beginEditingSet(set)} hitSlop={8}>
-                        <Text style={styles.editText}>Edit</Text>
-                      </Pressable>
-                      <Pressable onPress={() => confirmDeleteSet(set.id)} hitSlop={8}>
-                        <Text style={styles.deleteText}>Delete</Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
                 </View>
               ))
             )}
@@ -281,6 +162,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff8e7",
     fontSize: 14,
     lineHeight: 20,
+  },
+  lockedMessage: {
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 12,
+    color: "rgba(0, 0, 0, 0.58)",
+    backgroundColor: "#fff8e7",
+    fontSize: 13,
+    lineHeight: 19,
   },
   editCard: {
     marginTop: 16,

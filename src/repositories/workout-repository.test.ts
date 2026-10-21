@@ -219,4 +219,31 @@ describe("WorkoutRepository", () => {
       new WorkoutRepository(db).finishWorkout("workout-1"),
     ).rejects.toThrow("Only an active workout");
   });
+
+  it("does not edit a set after a workout is completed", async () => {
+    const db = fakeDatabase();
+    vi.mocked(db.getFirstAsync).mockResolvedValue(null);
+
+    await expect(
+      new WorkoutRepository(db).updateSet({
+        id: "set-1",
+        workoutId: "completed-workout",
+        exerciseId: "pull-up",
+        setType: "working",
+        weightKg: 2.5,
+        reps: 10,
+        rpe: null,
+      }),
+    ).rejects.toThrow("while a workout is active");
+    expect(db.runAsync).not.toHaveBeenCalled();
+  });
+
+  it("does not delete a set after a workout is completed", async () => {
+    const db = fakeDatabase();
+    vi.mocked(db.runAsync).mockResolvedValue({ changes: 0, lastInsertRowId: 0 });
+
+    await expect(
+      new WorkoutRepository(db).deleteSet("completed-workout", "set-1"),
+    ).rejects.toThrow("while a workout is active");
+  });
 });

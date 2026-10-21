@@ -306,19 +306,24 @@ export class WorkoutRepository {
     const workout = await this.db.getFirstAsync<{ id: string }>(
       `SELECT id
        FROM workouts
-       WHERE id = ? AND status IN ('active', 'completed') AND deleted_at IS NULL`,
+       WHERE id = ? AND status = 'active' AND deleted_at IS NULL`,
       [workoutId],
     );
-    if (!workout) throw new Error("Only an active or completed workout can be edited");
+    if (!workout) throw new Error("Sets can only be deleted while a workout is active");
 
     const now = new Date().toISOString();
     const result = await this.db.runAsync(
       `UPDATE sets
        SET deleted_at = ?, updated_at = ?
-       WHERE id = ? AND workout_id = ? AND deleted_at IS NULL`,
+       WHERE id = ? AND workout_id = ? AND deleted_at IS NULL
+         AND workout_id IN (
+           SELECT id FROM workouts WHERE status = 'active' AND deleted_at IS NULL
+         )`,
       [now, now, setId, workoutId],
     );
-    if (result.changes !== 1) throw new Error("Set was not found in this workout");
+    if (result.changes !== 1) {
+      throw new Error("Sets can only be deleted while a workout is active");
+    }
   }
 
   async finishWorkout(id: string, endedAt = new Date().toISOString()): Promise<void> {
@@ -425,12 +430,12 @@ export class WorkoutRepository {
        JOIN workout_exercises we ON we.workout_id = w.id
        WHERE w.id = ?
          AND we.exercise_id = ?
-         AND w.status IN ('active', 'completed')
+         AND w.status = 'active'
          AND w.deleted_at IS NULL`,
       [workoutId, exerciseId],
     );
     if (!workoutExercise) {
-      throw new Error("Sets can only be edited in an active or completed workout");
+      throw new Error("Sets can only be edited while a workout is active");
     }
   }
 }
