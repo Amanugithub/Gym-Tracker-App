@@ -184,6 +184,7 @@ export async function pullSync(
   const bodyWeightEntries = await database.query(
     `SELECT id, weight_kg AS "weightKg", measured_at AS "measuredAt",
             timezone_id AS "timezoneId", local_date AS "localDate",
+            measured_at AS "createdAt",
             client_updated_at AS "clientUpdatedAt", updated_at AS "updatedAt",
             deleted_at AS "deletedAt"
      FROM body_weight_entries

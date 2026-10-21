@@ -18,6 +18,7 @@ import { formatWeight, weightToKg } from "@/src/domain/units";
 import type { Profile } from "@/src/db/types";
 import { BodyWeightRepository } from "@/src/repositories/body-weight-repository";
 import { ProfileRepository } from "@/src/repositories/profile-repository";
+import { getSyncStatus, syncNow } from "@/src/sync/sync-service";
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
@@ -26,6 +27,8 @@ export default function SettingsScreen() {
   const [weight, setWeight] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -37,6 +40,16 @@ export default function SettingsScreen() {
           loaded?.bodyweightKg === null || !loaded
             ? ""
             : formatWeight(loaded.bodyweightKg, loaded.unit),
+        );
+      });
+      void getSyncStatus(db).then((status) => {
+        if (!mounted) return;
+        setSyncMessage(
+          status.lastSuccess
+            ? `Last synced: ${new Date(status.lastSuccess).toLocaleString()}`
+            : status.lastError
+              ? "Sync is waiting for a connection."
+              : "Not synced yet.",
         );
       });
       return () => {
@@ -77,6 +90,15 @@ export default function SettingsScreen() {
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function syncData() {
+    setIsSyncing(true);
+    const result = await syncNow(db);
+    setSyncMessage(result.success ? `Last synced: ${new Date(result.syncedAt ?? Date.now()).toLocaleString()}` : "Sync is waiting for a connection.");
+    setIsSyncing(false);
+    if (!result.success) setError("Could not sync right now. Your local data is safe.");
+    else setError(null);
   }
 
   function resetLocalData() {
@@ -146,6 +168,16 @@ export default function SettingsScreen() {
       <Pressable onPress={() => router.push("/onboarding")} style={styles.button}>
         <Text style={styles.buttonText}>Edit profile</Text>
       </Pressable>
+      <View style={styles.syncCard}>
+        <Text style={styles.weightTitle}>Cloud sync</Text>
+        <Text style={styles.weightHelp}>
+          Finished workouts and profile data are copied to your local backend.
+        </Text>
+        <Pressable onPress={() => void syncData()} disabled={isSyncing} style={styles.smallButton}>
+          <Text style={styles.buttonText}>{isSyncing ? "Syncing..." : "Sync now"}</Text>
+        </Pressable>
+        {syncMessage ? <Text style={styles.syncMessage}>{syncMessage}</Text> : null}
+      </View>
       <Pressable onPress={resetLocalData} style={styles.resetButton}>
         <Text style={styles.resetText}>Reset local data</Text>
       </Pressable>
@@ -208,6 +240,17 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 16,
     backgroundColor: "#fff8e7",
+  },
+  syncCard: {
+    marginTop: 18,
+    padding: 18,
+    borderRadius: 16,
+    backgroundColor: "#eaf2ff",
+  },
+  syncMessage: {
+    marginTop: 10,
+    color: "rgba(0, 0, 0, 0.58)",
+    fontSize: 12,
   },
   weightTitle: {
     color: "#081126",

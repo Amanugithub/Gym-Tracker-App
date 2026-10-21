@@ -1,6 +1,6 @@
 import type { DatabaseClient } from "./types";
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 /**
  * Runtime copy of the SQL migrations in database/migrations.
@@ -141,6 +141,14 @@ export const MIGRATIONS: Record<number, string> = {
       ON body_weight_entries (updated_at);
 
     PRAGMA user_version = 3;
+  `,
+  4: `
+    CREATE TABLE IF NOT EXISTS sync_state (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
+    PRAGMA user_version = 4;
   `,
 };
 

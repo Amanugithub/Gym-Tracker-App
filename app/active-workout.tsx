@@ -20,6 +20,7 @@ import type { SetType, Unit, Workout } from "@/src/db/types";
 import { formatWeight, weightToKg } from "@/src/domain/units";
 import { ProfileRepository } from "@/src/repositories/profile-repository";
 import { WorkoutRepository } from "@/src/repositories/workout-repository";
+import { syncNow } from "@/src/sync/sync-service";
 
 export default function ActiveWorkoutScreen() {
   const db = useSQLiteContext();
@@ -238,6 +239,7 @@ export default function ActiveWorkoutScreen() {
 
     try {
       await new WorkoutRepository(db).finishWorkout(workout.id);
+      void syncNow(db);
       router.replace("/");
     } catch {
       setError("Could not finish this workout.");
@@ -248,6 +250,7 @@ export default function ActiveWorkoutScreen() {
     if (!workout) return;
     try {
       await new WorkoutRepository(db).abandonWorkout(workout.id);
+      void syncNow(db);
       router.replace("/");
     } catch {
       setError("Could not abandon this workout.");
