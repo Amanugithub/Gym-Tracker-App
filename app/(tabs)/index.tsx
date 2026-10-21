@@ -44,16 +44,15 @@ export default function HomeScreen() {
       <Text style={styles.eyebrow}>HOME</Text>
       <Text style={styles.title}>Good to see you, {name}.</Text>
       <Text style={styles.subtitle}>
-        Your training space is ready. Workout logging is the next part we are
-        building.
+        Your training space is ready. Start a session whenever you are ready.
       </Text>
 
       <View style={styles.card}>
         <Text style={styles.cardLabel}>YOUR NEXT STEP</Text>
         <Text style={styles.cardTitle}>Start your first workout</Text>
         <Text style={styles.cardText}>
-          Soon you will choose an exercise and record every set here, even
-          without an internet connection.
+          Choose exercises as your session develops and record every set,
+          even without an internet connection.
         </Text>
         <Pressable
           onPress={() => router.push("/subscriptions")}

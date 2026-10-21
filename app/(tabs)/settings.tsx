@@ -33,13 +33,24 @@ export default function SettingsScreen() {
 
   const syncData = useCallback(async (silent = false) => {
     setIsSyncing(true);
-    const result = await syncNow(db);
-    setPendingSyncCount(result.pendingCount);
-    setSyncMessage(result.success ? `Last synced: ${new Date(result.syncedAt ?? Date.now()).toLocaleString()}` : result.message);
-    setIsSyncing(false);
-    if (!silent) {
-      if (!result.success) setError(result.message);
-      else setError(null);
+    try {
+      const result = await syncNow(db);
+      setPendingSyncCount(result.pendingCount);
+      setSyncMessage(
+        result.success
+          ? `Last synced: ${new Date(result.syncedAt ?? Date.now()).toLocaleString()}`
+          : result.message,
+      );
+      if (!silent) {
+        if (!result.success) setError(result.message);
+        else setError(null);
+      }
+    } catch (syncError) {
+      const message = syncError instanceof Error ? syncError.message : "Sync failed";
+      setSyncMessage(message);
+      if (!silent) setError(message);
+    } finally {
+      setIsSyncing(false);
     }
   }, [db]);
 
@@ -134,7 +145,8 @@ export default function SettingsScreen() {
       <Text style={styles.eyebrow}>PROFILE</Text>
       <Text style={styles.title}>{profile?.displayName ?? "Your profile"}</Text>
       <Text style={styles.subtitle}>
-        Your settings and workout data are stored locally on this phone.
+        Your data is saved on this phone first. Finished workouts can also be
+        copied to the sync server for backup and restore.
       </Text>
 
       {profile ? (
@@ -179,7 +191,8 @@ export default function SettingsScreen() {
       <View style={styles.syncCard}>
         <Text style={styles.weightTitle}>Cloud sync</Text>
         <Text style={styles.weightHelp}>
-          Finished workouts and profile data are copied to your local backend.
+          Finished workouts, bodyweight entries, and profile data can be copied
+          to the sync server.
         </Text>
         <Pressable onPress={() => void syncData()} disabled={isSyncing} style={styles.smallButton}>
           <Text style={styles.buttonText}>{isSyncing ? "Syncing..." : "Sync now"}</Text>

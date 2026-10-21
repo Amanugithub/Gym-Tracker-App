@@ -1,8 +1,8 @@
 # Gym Tracker v0 implementation plan
 
-Status: local v0 implementation complete  
-Scope: local-only Android-first Expo app  
-Source of truth: raw SQLite workouts and sets
+Status: local v0 implementation complete; sync foundation in progress
+Scope: local-first Android-first Expo app with an optional Express/PostgreSQL sync server
+Source of truth on the device: raw SQLite workouts and sets
 
 ## v0 objective
 
@@ -16,11 +16,12 @@ Open app
   -> log warm-up and working sets
   -> finish workout
   -> view history
-  -> edit or delete a set
+  -> review locked workout history
   -> see recalculated PRs and progress
+  -> optionally sync a backup
 ```
 
-Authentication, API synchronization, leaderboards, templates, and nutrition are not part of v0.
+Google account authentication, leaderboards, templates, and nutrition are not part of local v0.
 
 ## Locked product rules
 
@@ -51,11 +52,12 @@ Screen
     -> repository interface
       -> SQLite adapter
 
-PR and progress calculations are pure local domain code. Their PR rules are covered by
-the same cases as the standalone `gym-core` test package.
+PR and progress calculations are pure local domain code and are covered by the
+client's unit tests.
 ```
 
-Screens must not contain SQL. Repositories must not contain React components. `gym-core` must remain independent of SQLite, React Native, and the network.
+Screens must not contain SQL. Repositories must not contain React components. The
+domain calculations remain independent of SQLite, React Native, and the network.
 
 ## v0 screen map
 
@@ -64,14 +66,12 @@ app/
 ├── onboarding
 ├── (tabs)/
 │   ├── index             # Home
-│   ├── train             # Start/resume workout
-│   ├── progress          # Lift history and charts
-│   └── profile           # Profile and preferences
+│   ├── subscriptions     # Train: start/resume workout
+│   ├── insights          # Progress and charts
+│   └── settings          # Profile and preferences
 ├── active-workout
 ├── exercise-picker
-├── workout-summary
-├── workout-history
-└── exercise-detail
+└── subscriptions/[id]   # Workout history detail
 ```
 
 The first usable build only needs onboarding, Home, Train, active workout, and history. Progress can begin as a data-first screen with no visual polish.
@@ -123,7 +123,7 @@ The repository layer should return domain objects, not raw SQLite row shapes. Da
 5. Adding a set writes to SQLite immediately.
 6. The UI recalculates PR feedback from current local history.
 7. Finish requires at least one set and writes `ended_at` plus `status = 'completed'`.
-8. Any later edit or deletion recalculates derived results from all remaining raw sets.
+8. After completion, performance sets are locked. Notes may still be edited.
 
 ## Validation rules
 
@@ -145,9 +145,9 @@ The database constraints remain the final local safety net.
 - A profile can be saved locally and survives restart.
 - The exercise library is available in English and supports Amharic fallback behavior.
 - A user can create, resume, complete, and abandon a workout.
-- A user can log, edit, and soft-delete sets while offline.
+- A user can log, edit, and soft-delete sets while a workout is active and offline.
 - A deleted set disappears from history and calculations.
-- PR results match the shared `gym-core` tests, including the heavier-load rep-PR case.
+- PR results match the local tests, including the heavier-load rep-PR case.
 - Three working sets on a completed workout create one qualifying local date.
 - Multiple workouts on the same local date create one heatmap day.
 - The app handles a timezone midnight boundary using stored `timezone_id` and `local_date`.
@@ -170,31 +170,35 @@ The database constraints remain the final local safety net.
 - Done: build exercise picker.
 - Done: build active workout and set-row input.
 - Done: add resume, finish, and abandon behavior.
-- Remaining: replace the temporary tab routes with the final v0 route map.
+- Done: provide the Home, Train, Progress, and Profile tab workflow.
 
 ### Slice 3: history and calculations
 
-- Done: build workout history and set editing.
+- Done: build locked workout history and active-workout set editing.
 - Done: add soft deletion and recalculate from remaining raw sets.
-- Done: fix and expand `gym-core` PR tests, including heavier-load rep PRs.
+- Done: fix and expand PR tests, including heavier-load rep PRs.
 - Done: add e1RM, personal records, exercise progress, qualification, and consistency calculations.
 
 ### Slice 4: quality pass
 
 - Done: add loading, empty, and error states across the main local workflow.
 - Partial: the exercise library has English/Amharic data support; full UI translation is deferred.
-- Remaining: design polish and low-end Android device testing.
+- Done: document Android and USB/Wi-Fi network testing; broader device testing remains manual.
 - Done: add lint, typecheck, and test commands.
+
+## Sync foundation after local v0
+
+- Done: Express API and PostgreSQL foundation
+- Done: local sync connection, durable outbox, retry state, and reinstall restore path
+- Deferred: Google authentication and server sessions
 
 ## Explicitly deferred
 
-- Google authentication and server sessions
-- Express API and PostgreSQL
-- Sync outbox
 - Templates
 - Leaderboards
 - Nutrition guidance
 - AI coaching
 - XP, levels, seasons, and gamification
 
-The server phase starts only after the local workout loop is dependable.
+The next implementation phase is backend hardening and eventual account
+authentication; the local workout loop remains usable without either one.
