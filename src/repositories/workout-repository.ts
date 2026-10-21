@@ -8,6 +8,7 @@ import type {
   WorkoutSet,
   WorkoutStatus,
 } from "../db/types";
+import { enqueueSync } from "../sync/outbox";
 
 type WorkoutRow = {
   id: string;
@@ -347,6 +348,7 @@ export class WorkoutRepository {
     if (result.changes !== 1) {
       throw new Error("Only an active workout can be completed");
     }
+    await enqueueSync(this.db, "workout", id);
   }
 
   async abandonWorkout(id: string, endedAt = new Date().toISOString()): Promise<void> {
@@ -360,6 +362,7 @@ export class WorkoutRepository {
     if (result.changes !== 1) {
       throw new Error("Only an active workout can be abandoned");
     }
+    await enqueueSync(this.db, "workout", id);
   }
 
   private async loadWorkout(row: WorkoutRow): Promise<Workout> {

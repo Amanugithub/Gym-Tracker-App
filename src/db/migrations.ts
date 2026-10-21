@@ -1,6 +1,6 @@
 import type { DatabaseClient } from "./types";
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 /**
  * Runtime copy of the SQL migrations in database/migrations.
@@ -149,6 +149,19 @@ export const MIGRATIONS: Record<number, string> = {
     );
 
     PRAGMA user_version = 4;
+  `,
+  5: `
+    CREATE TABLE IF NOT EXISTS sync_outbox (
+      entity_type      TEXT NOT NULL CHECK (entity_type IN ('profile', 'body_weight', 'workout')),
+      entity_id        TEXT NOT NULL,
+      created_at       TEXT NOT NULL,
+      attempts         INTEGER NOT NULL DEFAULT 0,
+      last_attempt_at  TEXT,
+      last_error       TEXT,
+      PRIMARY KEY (entity_type, entity_id)
+    );
+
+    PRAGMA user_version = 5;
   `,
 };
 

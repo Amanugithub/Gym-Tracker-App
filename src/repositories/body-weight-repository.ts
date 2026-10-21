@@ -3,6 +3,7 @@ import type {
   BodyWeightEntry,
   DatabaseClient,
 } from "../db/types";
+import { enqueueSync } from "../sync/outbox";
 
 type BodyWeightRow = {
   id: string;
@@ -93,6 +94,8 @@ export class BodyWeightRepository {
          WHERE id = 1`,
         [input.weightKg, now],
       );
+      await enqueueSync(this.db, "body_weight", input.id);
+      await enqueueSync(this.db, "profile", "1");
     });
 
     const entry = await this.db.getFirstAsync<BodyWeightRow>(
@@ -113,6 +116,8 @@ export class BodyWeightRepository {
     );
     if (result.changes !== 1) throw new Error("Bodyweight entry was not found");
     await this.refreshProfileCurrentWeight();
+    await enqueueSync(this.db, "body_weight", id);
+    await enqueueSync(this.db, "profile", "1");
   }
 
   async refreshProfileCurrentWeight(): Promise<void> {

@@ -1,6 +1,12 @@
 import type { DatabaseClient } from "../db/types";
 import { ProfileRepository } from "../repositories/profile-repository";
 import { pullSync, pushSync } from "./api";
+import {
+  clearSyncOutbox,
+  listSyncOutbox,
+  markSyncAttempt,
+  recordSyncError,
+} from "./outbox";
 import type { SyncPullResponse } from "./types";
 
 const LAST_CURSOR = "last_pull_cursor";
@@ -131,7 +137,7 @@ async function applyPull(db: DatabaseClient, payload: SyncPullResponse): Promise
         bodyweightKg: payload.profile.bodyweightKg,
         heightCm: payload.profile.heightCm,
         updatedAt: payload.profile.clientUpdatedAt,
-      });
+      }, { enqueue: false });
     }
 
     for (const entry of payload.bodyWeightEntries) {
@@ -232,31 +238,49 @@ export type SyncResult = {
   success: boolean;
   message: string;
   syncedAt: string | null;
+  pendingCount: number;
 };
 
 export async function syncNow(db: DatabaseClient): Promise<SyncResult> {
+  const pending = await listSyncOutbox(db);
+  await markSyncAttempt(db, pending);
   try {
     const pushResponse = await pushSync(await buildPushPayload(db));
     const cursor = await getState(db, LAST_CURSOR);
     const pulled = await pullSync(cursor);
     await applyPull(db, pulled);
+    await clearSyncOutbox(db, pending);
     await setState(db, LAST_CURSOR, pulled.cursor);
     await setState(db, LAST_SUCCESS, pushResponse.serverTime);
     await setState(db, LAST_ERROR, "");
-    return { success: true, message: "Synced successfully.", syncedAt: pushResponse.serverTime };
+    return {
+      success: true,
+      message: "Synced successfully.",
+      syncedAt: pushResponse.serverTime,
+      pendingCount: (await listSyncOutbox(db)).length,
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Sync failed";
+    await recordSyncError(db, pending, message);
     await setState(db, LAST_ERROR, message);
-    return { success: false, message, syncedAt: await getState(db, LAST_SUCCESS) };
+    return {
+      success: false,
+      message,
+      syncedAt: await getState(db, LAST_SUCCESS),
+      pendingCount: (await listSyncOutbox(db)).length,
+    };
   }
 }
 
 export async function getSyncStatus(db: DatabaseClient): Promise<{
   lastSuccess: string | null;
   lastError: string | null;
+  pendingCount: number;
 }> {
+  const pending = await listSyncOutbox(db);
   return {
     lastSuccess: await getState(db, LAST_SUCCESS),
     lastError: await getState(db, LAST_ERROR),
+    pendingCount: pending.length,
   };
 }

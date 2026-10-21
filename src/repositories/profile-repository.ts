@@ -1,4 +1,5 @@
 import type { DatabaseClient, Profile, SaveProfileInput } from "../db/types";
+import { enqueueSync } from "../sync/outbox";
 
 type ProfileRow = {
   id: number;
@@ -42,7 +43,10 @@ export class ProfileRepository {
     return row ? mapProfile(row) : null;
   }
 
-  async saveProfile(input: SaveProfileInput): Promise<Profile> {
+  async saveProfile(
+    input: SaveProfileInput,
+    options: { enqueue?: boolean } = {},
+  ): Promise<Profile> {
     const updatedAt = input.updatedAt ?? new Date().toISOString();
 
     await this.db.runAsync(
@@ -70,6 +74,7 @@ export class ProfileRepository {
         updatedAt,
       ],
     );
+    if (options.enqueue !== false) await enqueueSync(this.db, "profile", "1");
 
     const profile = await this.getProfile();
     if (!profile) {

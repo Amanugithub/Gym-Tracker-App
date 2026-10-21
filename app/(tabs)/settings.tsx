@@ -29,6 +29,19 @@ export default function SettingsScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+
+  const syncData = useCallback(async (silent = false) => {
+    setIsSyncing(true);
+    const result = await syncNow(db);
+    setPendingSyncCount(result.pendingCount);
+    setSyncMessage(result.success ? `Last synced: ${new Date(result.syncedAt ?? Date.now()).toLocaleString()}` : result.message);
+    setIsSyncing(false);
+    if (!silent) {
+      if (!result.success) setError(result.message);
+      else setError(null);
+    }
+  }, [db]);
 
   useFocusEffect(
     useCallback(() => {
@@ -44,18 +57,22 @@ export default function SettingsScreen() {
       });
       void getSyncStatus(db).then((status) => {
         if (!mounted) return;
+        setPendingSyncCount(status.pendingCount);
         setSyncMessage(
-          status.lastSuccess
+          status.pendingCount > 0
+            ? `${status.pendingCount} item${status.pendingCount === 1 ? "" : "s"} waiting to sync.`
+            : status.lastSuccess
             ? `Last synced: ${new Date(status.lastSuccess).toLocaleString()}`
             : status.lastError
               ? status.lastError
               : "Not synced yet.",
         );
+        if (status.pendingCount > 0) void syncData(true);
       });
       return () => {
         mounted = false;
       };
-    }, [db]),
+    }, [db, syncData]),
   );
 
   async function logWeight() {
@@ -90,15 +107,6 @@ export default function SettingsScreen() {
     } finally {
       setIsSaving(false);
     }
-  }
-
-  async function syncData() {
-    setIsSyncing(true);
-    const result = await syncNow(db);
-    setSyncMessage(result.success ? `Last synced: ${new Date(result.syncedAt ?? Date.now()).toLocaleString()}` : result.message);
-    setIsSyncing(false);
-    if (!result.success) setError(result.message);
-    else setError(null);
   }
 
   function resetLocalData() {
@@ -176,6 +184,11 @@ export default function SettingsScreen() {
         <Pressable onPress={() => void syncData()} disabled={isSyncing} style={styles.smallButton}>
           <Text style={styles.buttonText}>{isSyncing ? "Syncing..." : "Sync now"}</Text>
         </Pressable>
+        {pendingSyncCount > 0 ? (
+          <Text style={styles.pendingText}>
+            {pendingSyncCount} item{pendingSyncCount === 1 ? "" : "s"} waiting to sync
+          </Text>
+        ) : null}
         {syncMessage ? <Text style={styles.syncMessage}>{syncMessage}</Text> : null}
       </View>
       <Pressable onPress={resetLocalData} style={styles.resetButton}>
@@ -251,6 +264,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: "rgba(0, 0, 0, 0.58)",
     fontSize: 12,
+  },
+  pendingText: {
+    marginTop: 10,
+    color: "#b45309",
+    fontSize: 13,
+    fontWeight: "800",
   },
   weightTitle: {
     color: "#081126",
