@@ -9,6 +9,7 @@ import { createSyncRouter } from "./routes/sync-routes";
 export function createApp(
   database: ReturnType<typeof createDatabase>,
   developmentUserId: string | null,
+  googleClientIds: string[],
 ) {
   const app = express();
   app.use(cors());
@@ -20,7 +21,7 @@ export function createApp(
 
   app.use(
     "/v1/sync",
-    requireAuth(developmentUserId),
+    requireAuth(database, developmentUserId, googleClientIds),
     createSyncRouter(database),
   );
 
@@ -38,7 +39,7 @@ export function createApp(
 
 const config = loadConfig();
 const database = createDatabase(config.databaseUrl);
-const app = createApp(database, config.developmentAuthUserId);
+const app = createApp(database, config.developmentAuthUserId, config.googleClientIds);
 
 app.listen(config.port, () => {
   console.log(`Gym Tracker API listening on http://localhost:${config.port}`);

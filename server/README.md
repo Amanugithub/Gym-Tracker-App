@@ -1,9 +1,10 @@
 # Gym Tracker backend
 
 This is the first Express/PostgreSQL foundation for the local-first sync plan.
-Google token verification is intentionally not enabled yet. Development mode
-uses the explicit `DEV_AUTH_USER_ID` from `.env` so the API can be exercised
-locally without pretending that authentication is production-ready.
+The API verifies Google ID tokens when `GOOGLE_CLIENT_ID` is configured.
+Development mode can still use the explicit `DEV_AUTH_USER_ID` from `.env` when
+no bearer token is supplied, so local sync remains testable before Google Cloud
+setup is complete.
 
 ## Run locally
 
@@ -23,7 +24,8 @@ curl http://localhost:3000/health
 ```
 
 Development sync request authentication is automatic while `NODE_ENV` is not
-`production`. The sync routes are:
+`production` and no bearer token is supplied. With Google configured, mobile
+requests send the Google ID token as a bearer token. The sync routes are:
 
 ```text
 POST /v1/sync/push

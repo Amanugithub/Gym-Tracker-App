@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 
 import { ProfileRepository } from "@/src/repositories/profile-repository";
+import { getAuthMode } from "@/src/auth/session";
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
@@ -15,6 +16,11 @@ export default function HomeScreen() {
 
     async function loadName() {
       try {
+        const authMode = await getAuthMode();
+        if (!authMode) {
+          router.replace("/(auth)/sign-in");
+          return;
+        }
         const profile = await new ProfileRepository(db).getProfile();
         if (!mounted) return;
         if (!profile) {

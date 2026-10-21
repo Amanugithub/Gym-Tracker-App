@@ -1,12 +1,15 @@
 import type { SyncPullResponse, SyncPushResponse } from "./types";
+import { getGoogleIdToken } from "../auth/session";
 
 const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const idToken = await getGoogleIdToken();
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
       ...(init?.headers ?? {}),
     },
   });

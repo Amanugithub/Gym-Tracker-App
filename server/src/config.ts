@@ -5,6 +5,7 @@ export type ServerConfig = {
   databaseUrl: string;
   nodeEnv: string;
   developmentAuthUserId: string | null;
+  googleClientIds: string[];
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -16,5 +17,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     databaseUrl,
     nodeEnv: env.NODE_ENV ?? "development",
     developmentAuthUserId: env.DEV_AUTH_USER_ID ?? null,
+    googleClientIds: (env.GOOGLE_CLIENT_IDS ?? env.GOOGLE_CLIENT_ID ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
   };
 }
