@@ -48,7 +48,7 @@ export default function SettingsScreen() {
           status.lastSuccess
             ? `Last synced: ${new Date(status.lastSuccess).toLocaleString()}`
             : status.lastError
-              ? "Sync is waiting for a connection."
+              ? status.lastError
               : "Not synced yet.",
         );
       });
@@ -95,9 +95,9 @@ export default function SettingsScreen() {
   async function syncData() {
     setIsSyncing(true);
     const result = await syncNow(db);
-    setSyncMessage(result.success ? `Last synced: ${new Date(result.syncedAt ?? Date.now()).toLocaleString()}` : "Sync is waiting for a connection.");
+    setSyncMessage(result.success ? `Last synced: ${new Date(result.syncedAt ?? Date.now()).toLocaleString()}` : result.message);
     setIsSyncing(false);
-    if (!result.success) setError("Could not sync right now. Your local data is safe.");
+    if (!result.success) setError(result.message);
     else setError(null);
   }
 

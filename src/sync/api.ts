@@ -5,14 +5,20 @@ const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000").rep
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const idToken = await getGoogleIdToken();
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Network request failed";
+    throw new Error(`Cannot reach ${API_URL}. ${detail}`);
+  }
 
   if (!response.ok) {
     const detail = await response.text();
