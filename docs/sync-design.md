@@ -58,8 +58,17 @@ The push request is a batch containing one profile, bodyweight entries, and
 terminal workout snapshots. Pull returns normalized profile, measurements,
 workouts, workout exercises, and sets. A missing cursor requests a full restore.
 
-## Next backend slice
+## Current verification coverage
 
-1. Add durable pending-sync status and automatic retry.
-2. Test reinstall restore and duplicate/retry uploads.
-3. Configure Google ID-token verification when account auth is resumed.
+- Pending uploads are stored in a local outbox with attempt count and the last
+  error, so closing the app does not lose retry state.
+- Settings retries pending work when the screen becomes active and also offers
+  a manual Sync now action.
+- The Android and network test matrix is in
+  [android-network-testing.md](./android-network-testing.md).
+
+## Remaining backend slice
+
+1. Add production-safe health checks, CORS configuration, and graceful
+   shutdown.
+2. Configure Google ID-token verification when account auth is resumed.

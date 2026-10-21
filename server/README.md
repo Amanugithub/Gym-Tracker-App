@@ -12,10 +12,12 @@ setup is complete.
 cd server
 cp .env.example .env
 npm install
-docker compose up -d
 npm run db:migrate
 npm run dev
 ```
+
+The development setup expects PostgreSQL to be running locally at the host and
+port in `DATABASE_URL`. Docker is not required.
 
 Health check:
 
