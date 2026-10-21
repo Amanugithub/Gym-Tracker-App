@@ -78,4 +78,34 @@ describe("sync contract", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("accepts custom template snapshots and deletion tombstones", () => {
+    const result = syncPushSchema.safeParse({
+      profile: null,
+      bodyWeightEntries: [],
+      workouts: [],
+      templates: [
+        {
+          id: "template-1",
+          name: "Upper Focus",
+          source: "custom",
+          createdAt: iso,
+          updatedAt: iso,
+          deletedAt: null,
+          exercises: [{ exerciseId: "barbell-bench-press", position: 0 }],
+        },
+        {
+          id: "template-2",
+          name: "Old Plan",
+          source: "custom",
+          createdAt: iso,
+          updatedAt: iso,
+          deletedAt: "2026-10-21T11:00:00.000Z",
+          exercises: [],
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
 });

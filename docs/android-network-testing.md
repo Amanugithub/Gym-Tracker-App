@@ -73,8 +73,9 @@ firewall and PostgreSQL/API status.
 4. Stop the API, create and finish one workout, restart the API, and retry. The
    same workout should upload once without creating a duplicate.
 5. After a successful sync, reset or reinstall the app, sign in with the same
-   development identity, and pull. The profile, bodyweight entries, and
-   completed/abandoned workouts should return.
+   development identity, and pull. The profile, bodyweight entries, custom
+   templates, and completed/abandoned workouts should return. Built-in
+   templates should be present even before the pull.
 6. Open a completed workout and confirm performance sets cannot be edited or
    deleted. Notes may still be changed.
 

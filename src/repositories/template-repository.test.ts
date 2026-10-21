@@ -95,6 +95,10 @@ describe("TemplateRepository", () => {
       expect.stringContaining("source, created_at, updated_at"),
       ["custom-upper", "Upper Focus", expect.any(String), expect.any(String)],
     );
+    expect(db.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT OR IGNORE INTO sync_outbox"),
+      ["template", "custom-upper", expect.any(String)],
+    );
     expect(template).toMatchObject({ id: "custom-upper", name: "Upper Focus", source: "custom" });
   });
 

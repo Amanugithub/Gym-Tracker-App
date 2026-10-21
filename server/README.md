@@ -39,5 +39,6 @@ POST /v1/sync/push
 GET  /v1/sync/pull?since=<server-cursor>
 ```
 
-See [the sync design](../docs/sync-design.md) for ownership, terminal workout,
-tombstone, and conflict rules.
+Custom templates are included in push and pull, including their ordered
+exercises and deletion tombstones. See [the sync design](../docs/sync-design.md)
+for ownership, terminal workout, tombstone, and conflict rules.

@@ -1,6 +1,6 @@
 # Workout template design
 
-Status: local data foundation complete; UI and server sync are next
+Status: local data and server sync foundation complete; UI is next
 
 Templates are optional starting points. A user can still start a completely
 blank workout and choose exercises during the session.
@@ -25,8 +25,9 @@ blank workout and choose exercises during the session.
 
 The local database stores templates separately from workout history. Resetting
 local data removes custom templates but keeps the built-in templates. Custom
-template sync and reinstall restore will be added in the next sync contract
-slice; built-in templates are recreated by local seeding.
+templates are included in the sync outbox and server snapshot, including
+deletions, so a full pull after reinstall restores them. Built-in templates are
+recreated by local seeding and are never duplicated by sync.
 
 ## Active workout recovery
 

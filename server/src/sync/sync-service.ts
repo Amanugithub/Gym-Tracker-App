@@ -88,6 +88,48 @@ export async function pushSync(
       );
     }
 
+    const acceptedTemplateIds: string[] = [];
+    for (const template of payload.templates) {
+      const result = await client.query(
+        `INSERT INTO workout_templates
+          (user_id, id, name, created_at, client_updated_at, updated_at, deleted_at)
+         VALUES ($1, $2, $3, $4, $5, now(), $6)
+         ON CONFLICT (user_id, id) DO UPDATE SET
+           name = EXCLUDED.name,
+           client_updated_at = EXCLUDED.client_updated_at,
+           updated_at = now(),
+           deleted_at = EXCLUDED.deleted_at
+         WHERE workout_templates.client_updated_at <= EXCLUDED.client_updated_at`,
+        [
+          userId,
+          template.id,
+          template.name,
+          template.createdAt,
+          template.updatedAt,
+          nullableDate(template.deletedAt),
+        ],
+      );
+
+      if (result.rowCount !== 1) continue;
+
+      await client.query(
+        `DELETE FROM template_exercises
+         WHERE user_id = $1 AND template_id = $2`,
+        [userId, template.id],
+      );
+      if (!template.deletedAt) {
+        for (const exercise of template.exercises) {
+          await client.query(
+            `INSERT INTO template_exercises
+              (user_id, template_id, exercise_id, position, created_at)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [userId, template.id, exercise.exerciseId, exercise.position, template.createdAt],
+          );
+        }
+      }
+      acceptedTemplateIds.push(template.id);
+    }
+
     const acceptedWorkoutIds: string[] = [];
     for (const workout of payload.workouts) {
       await client.query(
@@ -158,6 +200,7 @@ export async function pushSync(
     return {
       serverTime: new Date().toISOString(),
       acceptedWorkoutIds,
+      acceptedTemplateIds,
     };
   });
 }
@@ -193,6 +236,39 @@ export async function pullSync(
      ORDER BY measured_at ASC, id ASC`,
     values,
   );
+  const templateRows = await database.query<{
+    id: string;
+    name: string;
+    createdAt: string;
+    clientUpdatedAt: string;
+    updatedAt: string;
+    deletedAt: string | null;
+  }>(
+    `SELECT id, name, created_at AS "createdAt",
+            client_updated_at AS "clientUpdatedAt", updated_at AS "updatedAt",
+            deleted_at AS "deletedAt"
+     FROM workout_templates
+     WHERE user_id = $1 AND ${range}
+     ORDER BY updated_at ASC, id ASC`,
+    values,
+  );
+  const templateIds = templateRows.rows.map((template) => template.id);
+  const templateExerciseRows = templateIds.length
+    ? await database.query(
+        `SELECT template_id AS "templateId", exercise_id AS "exerciseId", position
+         FROM template_exercises
+         WHERE user_id = $1 AND template_id = ANY($2::text[])
+         ORDER BY template_id, position, exercise_id`,
+        [userId, templateIds],
+      )
+    : { rows: [] };
+  const templates = templateRows.rows.map((template) => ({
+    ...template,
+    source: "custom" as const,
+    exercises: templateExerciseRows.rows
+      .filter((exercise) => exercise.templateId === template.id)
+      .map(({ templateId: _templateId, ...exercise }) => exercise),
+  }));
   const workouts = await database.query<{ id: string }>(
     `SELECT id, status, started_at AS "startedAt", ended_at AS "endedAt",
             timezone_id AS "timezoneId", bodyweight_kg AS "bodyweightKg",
@@ -233,6 +309,7 @@ export async function pullSync(
     cursor,
     profile: profile.rows[0] ?? null,
     bodyWeightEntries: bodyWeightEntries.rows,
+    templates,
     workouts: workouts.rows,
     workoutExercises: workoutExercises.rows,
     sets: sets.rows,

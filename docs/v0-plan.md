@@ -197,7 +197,9 @@ The database constraints remain the final local safety net.
 - Done: copy template exercises into a new workout without coupling future
   workout changes to the template.
 - Done: enforce one active workout at the database level.
-- Remaining: add template controls to the UI and sync custom templates.
+- Done: sync custom templates, ordered exercises, deletion tombstones, and
+  reinstall restore.
+- Remaining: add template controls to the UI.
 
 ## Sync foundation after local v0
 
@@ -212,5 +214,6 @@ The database constraints remain the final local safety net.
 - AI coaching
 - XP, levels, seasons, and gamification
 
-The next implementation phase is backend hardening and eventual account
-authentication; the local workout loop remains usable without either one.
+The next implementation phase is UI design and component work. Account
+authentication remains deferred; the local development identity keeps sync
+testable in the meantime.

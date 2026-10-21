@@ -1,6 +1,6 @@
 import type { DatabaseClient } from "./types";
 
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 /**
  * Runtime copy of the SQL migrations in database/migrations.
@@ -192,6 +192,27 @@ export const MIGRATIONS: Record<number, string> = {
       WHERE status = 'active' AND deleted_at IS NULL;
 
     PRAGMA user_version = 6;
+  `,
+  7: `
+    CREATE TABLE sync_outbox_v7 (
+      entity_type      TEXT NOT NULL CHECK (entity_type IN ('profile', 'body_weight', 'workout', 'template')),
+      entity_id        TEXT NOT NULL,
+      created_at       TEXT NOT NULL,
+      attempts         INTEGER NOT NULL DEFAULT 0,
+      last_attempt_at  TEXT,
+      last_error       TEXT,
+      PRIMARY KEY (entity_type, entity_id)
+    );
+
+    INSERT INTO sync_outbox_v7
+      (entity_type, entity_id, created_at, attempts, last_attempt_at, last_error)
+    SELECT entity_type, entity_id, created_at, attempts, last_attempt_at, last_error
+    FROM sync_outbox;
+
+    DROP TABLE sync_outbox;
+    ALTER TABLE sync_outbox_v7 RENAME TO sync_outbox;
+
+    PRAGMA user_version = 7;
   `,
 };
 

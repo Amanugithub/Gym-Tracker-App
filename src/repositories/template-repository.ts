@@ -6,6 +6,7 @@ import type {
   WorkoutTemplateExercise,
   WorkoutTemplateSource,
 } from "../db/types";
+import { enqueueSync } from "../sync/outbox";
 
 type TemplateRow = {
   id: string;
@@ -116,6 +117,7 @@ export class TemplateRepository {
 
     const template = await this.getTemplate(input.id);
     if (!template) throw new Error("Template was not available after creation");
+    await enqueueSync(this.db, "template", input.id);
     return template;
   }
 
@@ -150,6 +152,7 @@ export class TemplateRepository {
 
     const template = await this.getTemplate(input.id);
     if (!template) throw new Error("Template was not available after updating");
+    await enqueueSync(this.db, "template", input.id);
     return template;
   }
 
@@ -164,6 +167,7 @@ export class TemplateRepository {
     if (result.changes !== 1) {
       throw new Error("Only an active custom template can be deleted");
     }
+    await enqueueSync(this.db, "template", id);
   }
 
   private async loadTemplate(row: TemplateRow): Promise<WorkoutTemplate> {

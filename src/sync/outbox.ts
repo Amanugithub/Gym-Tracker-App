@@ -1,6 +1,6 @@
 import type { DatabaseClient } from "../db/types";
 
-export type SyncEntityType = "profile" | "body_weight" | "workout";
+export type SyncEntityType = "profile" | "body_weight" | "workout" | "template";
 
 export type SyncOutboxEntry = {
   entityType: SyncEntityType;

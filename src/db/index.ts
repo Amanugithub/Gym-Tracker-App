@@ -27,5 +27,6 @@ export async function resetGymDatabase(db: DatabaseClient): Promise<void> {
     await db.runAsync("DELETE FROM workout_templates WHERE source = 'custom'", []);
     await db.runAsync("DELETE FROM profile", []);
     await db.runAsync("DELETE FROM sync_outbox", []);
+    await db.runAsync("DELETE FROM sync_state", []);
   });
 }

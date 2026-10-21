@@ -34,7 +34,7 @@ describe("migrateDatabase", () => {
   });
 
   it("adds templates and enforces one active workout on the current upgrade", async () => {
-    const db = fakeDatabase(CURRENT_SCHEMA_VERSION - 1);
+    const db = fakeDatabase(CURRENT_SCHEMA_VERSION - 2);
 
     await migrateDatabase(db);
 
@@ -43,6 +43,19 @@ describe("migrateDatabase", () => {
     );
     expect(db.execAsync).toHaveBeenCalledWith(
       expect.stringContaining("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_workout"),
+    );
+  });
+
+  it("expands the sync outbox for templates without losing old entries", async () => {
+    const db = fakeDatabase(CURRENT_SCHEMA_VERSION - 1);
+
+    await migrateDatabase(db);
+
+    expect(db.execAsync).toHaveBeenCalledWith(
+      expect.stringContaining("CHECK (entity_type IN ('profile', 'body_weight', 'workout', 'template'))"),
+    );
+    expect(db.execAsync).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO sync_outbox_v7"),
     );
   });
 

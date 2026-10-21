@@ -52,6 +52,15 @@ type PushSetRow = {
   deletedAt: string | null;
 };
 
+type PushTemplateRow = {
+  id: string;
+  name: string;
+  source: "custom";
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
 async function getState(db: DatabaseClient, key: string): Promise<string | null> {
   const row = await db.getFirstAsync<{ value: string }>(
     "SELECT value FROM sync_state WHERE key = ?",
@@ -87,6 +96,14 @@ async function buildPushPayload(db: DatabaseClient) {
      ORDER BY started_at ASC, id ASC`,
     [],
   );
+  const templateRows = await db.getAllAsync<PushTemplateRow>(
+    `SELECT id, name, 'custom' AS source, created_at AS createdAt,
+            updated_at AS updatedAt, deleted_at AS deletedAt
+     FROM workout_templates
+     WHERE source = 'custom'
+     ORDER BY updated_at ASC, id ASC`,
+    [],
+  );
 
   const workouts = [];
   for (const workout of workoutRows) {
@@ -107,6 +124,18 @@ async function buildPushPayload(db: DatabaseClient) {
     workouts.push({ ...workout, exercises, sets });
   }
 
+  const templates = [];
+  for (const template of templateRows) {
+    const exercises = await db.getAllAsync<{ exerciseId: string; position: number }>(
+      `SELECT exercise_id AS exerciseId, position
+       FROM template_exercises
+       WHERE template_id = ?
+       ORDER BY position ASC, exercise_id ASC`,
+      [template.id],
+    );
+    templates.push({ ...template, exercises });
+  }
+
   return {
     profile: profile
       ? {
@@ -122,6 +151,7 @@ async function buildPushPayload(db: DatabaseClient) {
       : null,
     bodyWeightEntries,
     workouts,
+    templates,
   };
 }
 
@@ -138,6 +168,44 @@ async function applyPull(db: DatabaseClient, payload: SyncPullResponse): Promise
         heightCm: payload.profile.heightCm,
         updatedAt: payload.profile.clientUpdatedAt,
       }, { enqueue: false });
+    }
+
+    for (const template of payload.templates ?? []) {
+      const result = await db.runAsync(
+        `INSERT INTO workout_templates
+          (id, name, source, created_at, updated_at, deleted_at)
+         VALUES (?, ?, 'custom', ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           name = excluded.name,
+           updated_at = excluded.updated_at,
+           deleted_at = excluded.deleted_at
+         WHERE workout_templates.source = 'custom'
+           AND workout_templates.updated_at <= excluded.updated_at`,
+        [
+          template.id,
+          template.name,
+          template.createdAt,
+          template.updatedAt,
+          template.deletedAt,
+        ],
+      );
+
+      if (result.changes !== 1) continue;
+
+      await db.runAsync(
+        "DELETE FROM template_exercises WHERE template_id = ?",
+        [template.id],
+      );
+      if (template.deletedAt) continue;
+
+      for (const exercise of template.exercises) {
+        await db.runAsync(
+          `INSERT INTO template_exercises
+            (template_id, exercise_id, position, created_at)
+           VALUES (?, ?, ?, ?)`,
+          [template.id, exercise.exerciseId, exercise.position, template.createdAt],
+        );
+      }
     }
 
     for (const entry of payload.bodyWeightEntries) {

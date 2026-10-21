@@ -61,10 +61,26 @@ export const workoutSyncSchema = z.object({
   sets: z.array(workoutSetSyncSchema),
 });
 
+export const templateSyncSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1).max(80),
+  source: z.literal("custom"),
+  createdAt: iso,
+  updatedAt: iso,
+  deletedAt: nullableIso,
+  exercises: z.array(
+    z.object({
+      exerciseId: z.string().min(1),
+      position: z.number().int().nonnegative(),
+    }),
+  ),
+});
+
 export const syncPushSchema = z.object({
   profile: profileSyncSchema.nullable(),
   bodyWeightEntries: z.array(bodyWeightSyncSchema),
   workouts: z.array(workoutSyncSchema),
+  templates: z.array(templateSyncSchema).default([]),
 });
 
 export type SyncPush = z.infer<typeof syncPushSchema>;

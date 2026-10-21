@@ -16,8 +16,8 @@ user signs in with Google.
 - Workout exercises
 - Sets, including deleted-set tombstones
 - Workout notes
-- Custom templates will be added to the sync contract before account restore is
-  considered complete. Built-in templates are recreated locally.
+- Custom templates, including deletion tombstones and ordered exercises
+- Built-in templates are recreated locally and are not uploaded
 
 Active workouts are intentionally not uploaded. When a workout becomes
 completed or abandoned, the app places it in the sync queue. A manual Sync now
@@ -46,6 +46,10 @@ bridge; it must be replaced by Google ID-token verification before deployment.
 - Profile and bodyweight entries use the newest client update timestamp.
 - Workout performance data is accepted once; later uploads may update only the note.
 - Deleted bodyweight entries remain deleted when a newer tombstone is received.
+- Custom templates use the newest client update timestamp; an accepted template
+  snapshot replaces its ordered exercise list.
+- Deleted custom templates remain as tombstones so they do not reappear after
+  reinstall or a later pull.
 - Pull uses a server cursor so clock differences on phones do not control pagination.
 
 ## API foundation
@@ -56,9 +60,10 @@ POST /v1/sync/push
 GET  /v1/sync/pull?since=<server-cursor>
 ```
 
-The push request is a batch containing one profile, bodyweight entries, and
-terminal workout snapshots. Pull returns normalized profile, measurements,
-workouts, workout exercises, and sets. A missing cursor requests a full restore.
+The push request is a batch containing one profile, bodyweight entries, custom
+templates, and terminal workout snapshots. Pull returns normalized profile,
+measurements, custom templates, workouts, workout exercises, and sets. A
+missing cursor requests a full restore.
 
 ## Current verification coverage
 
@@ -71,5 +76,4 @@ workouts, workout exercises, and sets. A missing cursor requests a full restore.
 
 ## Remaining backend slice
 
-1. Add custom-template push, pull, deletion, and reinstall restore.
-2. Configure Google ID-token verification when account auth is resumed.
+1. Configure Google ID-token verification when account auth is resumed.
