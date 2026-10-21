@@ -1,6 +1,6 @@
 # Gym Tracker sync design
 
-Status: backend foundation and local sync connection
+Status: backend foundation and local sync connection; hardening complete
 
 ## Ownership
 
@@ -69,6 +69,4 @@ workouts, workout exercises, and sets. A missing cursor requests a full restore.
 
 ## Remaining backend slice
 
-1. Add production-safe health checks, CORS configuration, and graceful
-   shutdown.
-2. Configure Google ID-token verification when account auth is resumed.
+1. Configure Google ID-token verification when account auth is resumed.

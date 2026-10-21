@@ -17,6 +17,7 @@ export function requireAuth(
   database: Pool,
   developmentUserId: string | null,
   googleClientIds: string[],
+  nodeEnv: string = process.env.NODE_ENV ?? "development",
 ) {
   const googleClient = new OAuth2Client();
 
@@ -24,7 +25,7 @@ export function requireAuth(
     const authRequest = request as AuthenticatedRequest;
     const bearer = request.header("authorization")?.replace(/^Bearer\s+/i, "");
 
-    if (!bearer && developmentUserId && process.env.NODE_ENV !== "production") {
+    if (!bearer && developmentUserId && nodeEnv !== "production") {
       authRequest.user = { id: developmentUserId, googleSubject: null };
       next();
       return;

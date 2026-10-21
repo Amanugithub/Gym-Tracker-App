@@ -25,6 +25,11 @@ Health check:
 curl http://localhost:3000/health
 ```
 
+The response should contain `{"ok":true,"database":"ok"}`. A database failure
+returns HTTP 503 instead of a misleading healthy response. In production, set
+`CORS_ORIGINS` to a comma-separated browser-origin allowlist. Native mobile
+requests normally do not need a CORS entry.
+
 Development sync request authentication is automatic while `NODE_ENV` is not
 `production` and no bearer token is supplied. With Google configured, mobile
 requests send the Google ID token as a bearer token. The sync routes are:

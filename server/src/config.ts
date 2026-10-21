@@ -6,6 +6,7 @@ export type ServerConfig = {
   nodeEnv: string;
   developmentAuthUserId: string | null;
   googleClientIds: string[];
+  corsOrigins: string[];
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
@@ -18,6 +19,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     nodeEnv: env.NODE_ENV ?? "development",
     developmentAuthUserId: env.DEV_AUTH_USER_ID ?? null,
     googleClientIds: (env.GOOGLE_CLIENT_IDS ?? env.GOOGLE_CLIENT_ID ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+    corsOrigins: (env.CORS_ORIGINS ?? "")
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean),
