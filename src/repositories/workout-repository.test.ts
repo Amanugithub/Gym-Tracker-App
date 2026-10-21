@@ -79,6 +79,73 @@ describe("WorkoutRepository", () => {
     expect(workout.exercises).toEqual([]);
   });
 
+  it("copies a template's exercises into a new workout", async () => {
+    const db = fakeDatabase();
+    vi.mocked(db.getFirstAsync)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "system-push-day",
+        name: "Push Day",
+        source: "system",
+        created_at: "2026-10-21T10:00:00.000Z",
+        updated_at: "2026-10-21T10:00:00.000Z",
+        deleted_at: null,
+      })
+      .mockResolvedValueOnce(workoutRow);
+    vi.mocked(db.getAllAsync)
+      .mockResolvedValueOnce([
+        {
+          exercise_id: "barbell-bench-press",
+          position: 0,
+          name: "Barbell Bench Press",
+          equipment: "barbell",
+          kind: "weighted",
+        },
+        {
+          exercise_id: "cable-triceps-pushdown",
+          position: 1,
+          name: "Cable Triceps Pushdown",
+          equipment: "cable",
+          kind: "weighted",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          exercise_id: "barbell-bench-press",
+          name: "Barbell Bench Press",
+          equipment: "barbell",
+          kind: "weighted",
+          sort_order: 30,
+        },
+        {
+          exercise_id: "cable-triceps-pushdown",
+          name: "Cable Triceps Pushdown",
+          equipment: "cable",
+          kind: "weighted",
+          sort_order: 190,
+        },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const workout = await new WorkoutRepository(db).createWorkout({
+      id: "workout-1",
+      startedAt: "2026-10-21T10:00:00.000Z",
+      timezoneId: "Africa/Addis_Ababa",
+      localDate: "2026-10-21",
+      bodyweightKg: 75,
+      templateId: "system-push-day",
+    });
+
+    expect(workout.exercises.map((exercise) => exercise.exerciseId)).toEqual([
+      "barbell-bench-press",
+      "cable-triceps-pushdown",
+    ]);
+    expect(db.runAsync).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO workout_exercises"),
+      ["workout-1", "cable-triceps-pushdown", 1, expect.any(String)],
+    );
+  });
+
   it("adds exercises to an active workout without duplicating them", async () => {
     const db = fakeDatabase();
     vi.mocked(db.getFirstAsync)

@@ -1,12 +1,13 @@
 import * as SQLite from "expo-sqlite";
 
 import { migrateDatabase } from "./migrations";
-import { seedExercises } from "./seed";
+import { seedExercises, seedWorkoutTemplates } from "./seed";
 import type { DatabaseClient, ExpoDatabase } from "./types";
 
 export async function initializeGymDatabase(db: ExpoDatabase): Promise<void> {
   await migrateDatabase(db);
   await seedExercises(db);
+  await seedWorkoutTemplates(db);
 }
 
 export async function openGymDatabase(
@@ -23,6 +24,7 @@ export async function resetGymDatabase(db: DatabaseClient): Promise<void> {
     await db.runAsync("DELETE FROM sets", []);
     await db.runAsync("DELETE FROM workout_exercises", []);
     await db.runAsync("DELETE FROM workouts", []);
+    await db.runAsync("DELETE FROM workout_templates WHERE source = 'custom'", []);
     await db.runAsync("DELETE FROM profile", []);
     await db.runAsync("DELETE FROM sync_outbox", []);
   });

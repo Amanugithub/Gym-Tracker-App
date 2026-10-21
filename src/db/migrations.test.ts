@@ -33,6 +33,19 @@ describe("migrateDatabase", () => {
     expect(db.execAsync).not.toHaveBeenCalled();
   });
 
+  it("adds templates and enforces one active workout on the current upgrade", async () => {
+    const db = fakeDatabase(CURRENT_SCHEMA_VERSION - 1);
+
+    await migrateDatabase(db);
+
+    expect(db.execAsync).toHaveBeenCalledWith(
+      expect.stringContaining("CREATE TABLE IF NOT EXISTS workout_templates"),
+    );
+    expect(db.execAsync).toHaveBeenCalledWith(
+      expect.stringContaining("CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_workout"),
+    );
+  });
+
   it("rejects a database created by a newer app version", async () => {
     const db = fakeDatabase(CURRENT_SCHEMA_VERSION + 1);
 

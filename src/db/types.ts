@@ -78,6 +78,37 @@ export type AddBodyWeightInput = {
 
 export type WorkoutStatus = "active" | "completed" | "abandoned";
 export type SetType = "warmup" | "working";
+export type WorkoutTemplateSource = "system" | "custom";
+
+export type WorkoutTemplateExercise = {
+  exerciseId: string;
+  position: number;
+  name: string;
+  equipment: ExerciseEquipment;
+  kind: ExerciseKind;
+};
+
+export type WorkoutTemplate = {
+  id: string;
+  name: string;
+  source: WorkoutTemplateSource;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  exercises: WorkoutTemplateExercise[];
+};
+
+export type CreateWorkoutTemplateInput = {
+  id: string;
+  name: string;
+  exerciseIds: string[];
+};
+
+export type UpdateWorkoutTemplateInput = {
+  id: string;
+  name: string;
+  exerciseIds: string[];
+};
 
 export type WorkoutSet = {
   id: string;
@@ -125,7 +156,8 @@ export type CreateWorkoutInput = {
   timezoneId: string;
   localDate: string;
   bodyweightKg: number | null;
-  exerciseIds: string[];
+  exerciseIds?: string[];
+  templateId?: string;
 };
 
 export type AddSetInput = {

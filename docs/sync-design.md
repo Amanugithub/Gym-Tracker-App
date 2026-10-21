@@ -16,6 +16,8 @@ user signs in with Google.
 - Workout exercises
 - Sets, including deleted-set tombstones
 - Workout notes
+- Custom templates will be added to the sync contract before account restore is
+  considered complete. Built-in templates are recreated locally.
 
 Active workouts are intentionally not uploaded. When a workout becomes
 completed or abandoned, the app places it in the sync queue. A manual Sync now
@@ -69,4 +71,5 @@ workouts, workout exercises, and sets. A missing cursor requests a full restore.
 
 ## Remaining backend slice
 
-1. Configure Google ID-token verification when account auth is resumed.
+1. Add custom-template push, pull, deletion, and reinstall restore.
+2. Configure Google ID-token verification when account auth is resumed.

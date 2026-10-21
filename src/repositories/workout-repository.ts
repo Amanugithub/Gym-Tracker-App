@@ -9,6 +9,7 @@ import type {
   WorkoutStatus,
 } from "../db/types";
 import { enqueueSync } from "../sync/outbox";
+import { TemplateRepository } from "./template-repository";
 
 type WorkoutRow = {
   id: string;
@@ -118,10 +119,19 @@ export class WorkoutRepository {
   constructor(private readonly db: DatabaseClient) {}
 
   async createWorkout(input: CreateWorkoutInput): Promise<Workout> {
-    const exerciseIds = [...new Set(input.exerciseIds)];
     if (await this.getActiveWorkout()) {
       throw new Error("An active workout already exists");
     }
+
+    let templateExerciseIds: string[] = [];
+    if (input.templateId) {
+      const template = await new TemplateRepository(this.db).getTemplate(input.templateId);
+      if (!template) throw new Error("Workout template was not found");
+      templateExerciseIds = template.exercises.map((exercise) => exercise.exerciseId);
+    }
+    const exerciseIds = [
+      ...new Set([...templateExerciseIds, ...(input.exerciseIds ?? [])]),
+    ];
 
     const createdAt = input.startedAt;
 

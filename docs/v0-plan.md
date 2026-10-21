@@ -31,6 +31,8 @@ Google account authentication, leaderboards, templates, and nutrition are not pa
 - A completed or abandoned workout is locked; only its note may be edited later.
 - A workout may start with no exercises selected.
 - Exercises can be added at any point while a workout is active.
+- An active workout is saved immediately and survives app restarts or process
+  removal; it is not automatically abandoned.
 - A workout must contain at least one set before it can be completed.
 - A qualifying workout contains at least three non-deleted working sets.
 - Warm-up sets never count toward PRs, e1RM, volume, or qualification.
@@ -43,6 +45,8 @@ Google account authentication, leaderboards, templates, and nutrition are not pa
 - Soft-deleted records are excluded from display and calculations.
 - PRs are recomputed from raw history after edits and deletions.
 - The first valid e1RM after only high-rep sets is a baseline, not a PR.
+- Templates are optional exercise presets; they do not prescribe a fixed number
+  of sets or reps.
 
 ## Application boundaries
 
@@ -186,6 +190,15 @@ The database constraints remain the final local safety net.
 - Done: document Android and USB/Wi-Fi network testing; broader device testing remains manual.
 - Done: add lint, typecheck, and test commands.
 
+### Slice 5: template foundation
+
+- Done: add built-in Push, Pull, Legs, Upper Body, and Full Body templates.
+- Done: add custom template create, update, and soft-delete operations.
+- Done: copy template exercises into a new workout without coupling future
+  workout changes to the template.
+- Done: enforce one active workout at the database level.
+- Remaining: add template controls to the UI and sync custom templates.
+
 ## Sync foundation after local v0
 
 - Done: Express API and PostgreSQL foundation
@@ -194,7 +207,6 @@ The database constraints remain the final local safety net.
 
 ## Explicitly deferred
 
-- Templates
 - Leaderboards
 - Nutrition guidance
 - AI coaching

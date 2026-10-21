@@ -8,6 +8,12 @@ type ExerciseSeed = {
   sortOrder: number;
 };
 
+export type WorkoutTemplateSeed = {
+  id: string;
+  name: string;
+  exerciseIds: readonly string[];
+};
+
 // English is intentionally the verified seed language for v0. Amharic rows
 // can be added after the translations are reviewed instead of shipping guessed
 // exercise names.
@@ -41,6 +47,59 @@ export const EXERCISE_SEED: readonly ExerciseSeed[] = [
   { id: "assisted-dip", equipment: "machine", kind: "bodyweight", nameEn: "Assisted Dip", sortOrder: 270 },
 ];
 
+export const WORKOUT_TEMPLATE_SEED: readonly WorkoutTemplateSeed[] = [
+  {
+    id: "system-push-day",
+    name: "Push Day",
+    exerciseIds: [
+      "barbell-bench-press",
+      "barbell-overhead-press",
+      "dumbbell-lateral-raise",
+      "cable-triceps-pushdown",
+    ],
+  },
+  {
+    id: "system-pull-day",
+    name: "Pull Day",
+    exerciseIds: [
+      "cable-lat-pulldown",
+      "barbell-row",
+      "dumbbell-row",
+      "dumbbell-biceps-curl",
+    ],
+  },
+  {
+    id: "system-legs-day",
+    name: "Legs Day",
+    exerciseIds: [
+      "barbell-back-squat",
+      "barbell-romanian-deadlift",
+      "machine-leg-press",
+      "machine-leg-curl",
+    ],
+  },
+  {
+    id: "system-upper-body",
+    name: "Upper Body",
+    exerciseIds: [
+      "barbell-bench-press",
+      "cable-lat-pulldown",
+      "barbell-overhead-press",
+      "barbell-row",
+    ],
+  },
+  {
+    id: "system-full-body",
+    name: "Full Body",
+    exerciseIds: [
+      "barbell-back-squat",
+      "barbell-bench-press",
+      "cable-lat-pulldown",
+      "barbell-overhead-press",
+    ],
+  },
+];
+
 export async function seedExercises(db: DatabaseClient): Promise<void> {
   for (const exercise of EXERCISE_SEED) {
     await db.runAsync(
@@ -55,5 +114,27 @@ export async function seedExercises(db: DatabaseClient): Promise<void> {
        VALUES (?, 'en', ?)`,
       [exercise.id, exercise.nameEn],
     );
+  }
+}
+
+export async function seedWorkoutTemplates(db: DatabaseClient): Promise<void> {
+  const createdAt = new Date().toISOString();
+
+  for (const template of WORKOUT_TEMPLATE_SEED) {
+    await db.runAsync(
+      `INSERT OR IGNORE INTO workout_templates
+        (id, name, source, created_at, updated_at, deleted_at)
+       VALUES (?, ?, 'system', ?, ?, NULL)`,
+      [template.id, template.name, createdAt, createdAt],
+    );
+
+    for (const [position, exerciseId] of template.exerciseIds.entries()) {
+      await db.runAsync(
+        `INSERT OR IGNORE INTO template_exercises
+          (template_id, exercise_id, position, created_at)
+         VALUES (?, ?, ?, ?)`,
+        [template.id, exerciseId, position, createdAt],
+      );
+    }
   }
 }
