@@ -1,330 +1,68 @@
 import { useCallback, useState } from "react";
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { randomUUID } from "expo-crypto";
 import { useSQLiteContext } from "expo-sqlite";
 
 import { resetGymDatabase } from "@/src/db";
-import { localDateForTimezone } from "@/src/domain/time";
-import { formatWeight, weightToKg } from "@/src/domain/units";
+import { GlassCard, KineticScreen, PrimaryButton, ScreenHeader, SecondaryButton, SectionLabel } from "@/src/components/kinetic-ui";
 import type { Profile } from "@/src/db/types";
-import { BodyWeightRepository } from "@/src/repositories/body-weight-repository";
 import { ProfileRepository } from "@/src/repositories/profile-repository";
 import { getSyncStatus, syncNow } from "@/src/sync/sync-service";
+import { theme } from "@/src/theme";
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [weight, setWeight] = useState("");
+  const [pending, setPending] = useState(0);
+  const [syncMessage, setSyncMessage] = useState("Not synced yet.");
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [pendingSyncCount, setPendingSyncCount] = useState(0);
-
-  const syncData = useCallback(async (silent = false) => {
-    setIsSyncing(true);
-    try {
-      const result = await syncNow(db);
-      setPendingSyncCount(result.pendingCount);
-      setSyncMessage(
-        result.success
-          ? `Last synced: ${new Date(result.syncedAt ?? Date.now()).toLocaleString()}`
-          : result.message,
-      );
-      if (!silent) {
-        if (!result.success) setError(result.message);
-        else setError(null);
-      }
-    } catch (syncError) {
-      const message = syncError instanceof Error ? syncError.message : "Sync failed";
-      setSyncMessage(message);
-      if (!silent) setError(message);
-    } finally {
-      setIsSyncing(false);
-    }
+  const load = useCallback(async () => {
+    const [loaded, status] = await Promise.all([new ProfileRepository(db).getProfile(), getSyncStatus(db)]);
+    setProfile(loaded); setPending(status.pendingCount); setSyncMessage(status.lastSuccess ? `Last synced ${new Date(status.lastSuccess).toLocaleString()}` : status.lastError ?? "Not synced yet.");
   }, [db]);
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
 
-  useFocusEffect(
-    useCallback(() => {
-      let mounted = true;
-      void new ProfileRepository(db).getProfile().then((loaded) => {
-        if (!mounted) return;
-        setProfile(loaded);
-        setWeight(
-          loaded?.bodyweightKg === null || !loaded
-            ? ""
-            : formatWeight(loaded.bodyweightKg, loaded.unit),
-        );
-      });
-      void getSyncStatus(db).then((status) => {
-        if (!mounted) return;
-        setPendingSyncCount(status.pendingCount);
-        setSyncMessage(
-          status.pendingCount > 0
-            ? `${status.pendingCount} item${status.pendingCount === 1 ? "" : "s"} waiting to sync.`
-            : status.lastSuccess
-            ? `Last synced: ${new Date(status.lastSuccess).toLocaleString()}`
-            : status.lastError
-              ? status.lastError
-              : "Not synced yet.",
-        );
-        if (status.pendingCount > 0) void syncData(true);
-      });
-      return () => {
-        mounted = false;
-      };
-    }, [db, syncData]),
-  );
-
-  async function logWeight() {
-    if (!profile) return;
-    const enteredWeight = Number(weight);
-    const weightKg = weightToKg(enteredWeight, profile.unit);
-    if (!Number.isFinite(weightKg) || weightKg <= 0) {
-      setError("Enter a positive bodyweight.");
-      return;
-    }
-
-    setError(null);
-    setIsSaving(true);
-    try {
-      const measuredAt = new Date().toISOString();
-      await new BodyWeightRepository(db).recordIfChanged({
-        id: randomUUID(),
-        weightKg,
-        measuredAt,
-        timezoneId: profile.timezoneId,
-        localDate: localDateForTimezone(measuredAt, profile.timezoneId),
-      });
-      const updated = await new ProfileRepository(db).getProfile();
-      setProfile(updated);
-      setWeight(
-        updated?.bodyweightKg === null || !updated
-          ? ""
-          : formatWeight(updated.bodyweightKg, updated.unit),
-      );
-    } catch {
-      setError("Could not save this bodyweight measurement.");
-    } finally {
-      setIsSaving(false);
-    }
+  async function sync() {
+    setSyncing(true); setError(null);
+    try { const result = await syncNow(db); setPending(result.pendingCount); setSyncMessage(result.success ? `Last synced ${new Date(result.syncedAt ?? Date.now()).toLocaleString()}` : result.message); if (!result.success) setError(result.message); } catch (syncError) { setError(syncError instanceof Error ? syncError.message : "Sync failed"); } finally { setSyncing(false); }
   }
-
-  function resetLocalData() {
-    Alert.alert(
-      "Reset local data?",
-      "This deletes your profile, workouts, and sets from this device.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reset",
-          style: "destructive",
-          onPress: () => {
-            void (async () => {
-              await resetGymDatabase(db);
-              router.replace("/onboarding");
-            })();
-          },
-        },
-      ],
-    );
+  function reset() {
+    Alert.alert("Reset local data?", "This deletes the profile, workouts, templates, and measurements on this device.", [{ text: "Cancel", style: "cancel" }, { text: "Reset", style: "destructive", onPress: () => { void (async () => { await resetGymDatabase(db); router.replace("/onboarding"); })(); } }]);
   }
-
-  return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.eyebrow}>PROFILE</Text>
-      <Text style={styles.title}>{profile?.displayName ?? "Your profile"}</Text>
-      <Text style={styles.subtitle}>
-        Your data is saved on this phone first. Finished workouts can also be
-        copied to the sync server for backup and restore.
-      </Text>
-
-      {profile ? (
-        <View style={styles.card}>
-          <Text style={styles.row}>Unit: {profile.unit.toUpperCase()}</Text>
-          <Text style={styles.row}>Weekly target: {profile.weeklyTarget} workouts</Text>
-          <Text style={styles.row}>Timezone: {profile.timezoneId}</Text>
-          <Text style={styles.row}>
-            Height: {profile.heightCm === null ? "Not set" : `${profile.heightCm} cm`}
-          </Text>
-        </View>
-      ) : null}
-
-      {profile ? (
-        <View style={styles.weightCard}>
-          <Text style={styles.weightTitle}>Log bodyweight</Text>
-          <Text style={styles.weightHelp}>
-            Measurements are saved over time for weight and BMI progress.
-          </Text>
-          <TextInput
-            value={weight}
-            onChangeText={setWeight}
-            keyboardType="decimal-pad"
-            placeholder={`Weight in ${profile.unit}`}
-            placeholderTextColor="#8b8d96"
-            style={styles.input}
-          />
-          <Pressable
-            onPress={() => void logWeight()}
-            disabled={isSaving}
-            style={styles.smallButton}
-          >
-            <Text style={styles.buttonText}>{isSaving ? "Saving..." : "Save measurement"}</Text>
-          </Pressable>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </View>
-      ) : null}
-
-      <Pressable onPress={() => router.push("/onboarding")} style={styles.button}>
-        <Text style={styles.buttonText}>Edit profile</Text>
-      </Pressable>
-      <View style={styles.syncCard}>
-        <Text style={styles.weightTitle}>Cloud sync</Text>
-        <Text style={styles.weightHelp}>
-          Finished workouts, bodyweight entries, and profile data can be copied
-          to the sync server.
-        </Text>
-        <Pressable onPress={() => void syncData()} disabled={isSyncing} style={styles.smallButton}>
-          <Text style={styles.buttonText}>{isSyncing ? "Syncing..." : "Sync now"}</Text>
-        </Pressable>
-        {pendingSyncCount > 0 ? (
-          <Text style={styles.pendingText}>
-            {pendingSyncCount} item{pendingSyncCount === 1 ? "" : "s"} waiting to sync
-          </Text>
-        ) : null}
-        {syncMessage ? <Text style={styles.syncMessage}>{syncMessage}</Text> : null}
-      </View>
-      <Pressable onPress={resetLocalData} style={styles.resetButton}>
-        <Text style={styles.resetText}>Reset local data</Text>
-      </Pressable>
-    </ScrollView>
-  );
+  return <KineticScreen><ScreenHeader eyebrow="PROFILE" title={profile?.displayName ?? "Your profile"} subtitle="Manage the information used for your logs, body metrics, and sync." />
+    {!profile ? <Text style={styles.muted}>Profile has not been set up yet.</Text> : <>
+      <GlassCard style={styles.identity}><Text style={styles.identityName}>{profile.displayName ?? "Unnamed athlete"}</Text><Text style={styles.identityMeta}>{profile.unit.toUpperCase()} · {profile.language === "am" ? "Amharic" : "English"}</Text><Text style={styles.identityMeta}>{profile.timezoneId}</Text></GlassCard>
+      <View style={styles.actions}><PrimaryButton label="Edit profile" onPress={() => router.push("/onboarding")} style={styles.flexButton} /><SecondaryButton label="Templates" onPress={() => router.push("/templates" as never)} style={styles.flexButton} /></View>
+      <SectionLabel>PROFILE DATA</SectionLabel>
+      <GlassCard style={styles.dataCard}><Row label="Weekly target" value={`${profile.weeklyTarget} workouts`} /><Row label="Height" value={profile.heightCm === null ? "Not set" : `${profile.heightCm} cm`} /><Row label="Current bodyweight" value={profile.bodyweightKg === null ? "Not set" : `${profile.bodyweightKg.toFixed(1)} kg`} /></GlassCard>
+      <SectionLabel>BACKUP & SYNC</SectionLabel>
+      <GlassCard style={styles.syncCard}><Text style={styles.cardTitle}>Cloud sync</Text><Text style={styles.help}>Finished workouts, templates, bodyweight entries, and profile changes can be restored from the sync server.</Text>{pending > 0 ? <Text style={styles.pending}>{pending} item{pending === 1 ? "" : "s"} waiting to sync</Text> : null}<Text style={styles.syncMessage}>{syncMessage}</Text><PrimaryButton label="Sync now" onPress={() => void sync()} loading={syncing} style={styles.syncButton} />{error ? <Text style={styles.error}>{error}</Text> : null}</GlassCard>
+      <Pressable onPress={reset} style={styles.reset}><Text style={styles.resetText}>Reset local data</Text></Pressable>
+    </>}</KineticScreen>;
 }
 
+function Row({ label, value }: { label: string; value: string }) { return <View style={styles.row}><Text style={styles.rowLabel}>{label}</Text><Text style={styles.rowValue}>{value}</Text></View>; }
+
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#fff9e3",
-  },
-  content: {
-    padding: 24,
-    paddingTop: 36,
-    paddingBottom: 40,
-  },
-  eyebrow: {
-    color: "#ea7a53",
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 2,
-  },
-  title: {
-    marginTop: 12,
-    color: "#081126",
-    fontSize: 30,
-    fontWeight: "800",
-  },
-  subtitle: {
-    marginTop: 10,
-    color: "rgba(0, 0, 0, 0.6)",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  card: {
-    gap: 10,
-    marginTop: 26,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: "#fff8e7",
-  },
-  row: {
-    color: "#081126",
-    fontSize: 15,
-  },
-  button: {
-    alignItems: "center",
-    marginTop: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: "#081126",
-  },
-  buttonText: {
-    color: "#fff9e3",
-    fontWeight: "800",
-  },
-  weightCard: {
-    marginTop: 18,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: "#fff8e7",
-  },
-  syncCard: {
-    marginTop: 18,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: "#eaf2ff",
-  },
-  syncMessage: {
-    marginTop: 10,
-    color: "rgba(0, 0, 0, 0.58)",
-    fontSize: 12,
-  },
-  pendingText: {
-    marginTop: 10,
-    color: "#b45309",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  weightTitle: {
-    color: "#081126",
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  weightHelp: {
-    marginTop: 6,
-    color: "rgba(0, 0, 0, 0.58)",
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  input: {
-    minHeight: 50,
-    marginTop: 12,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: "rgba(8, 17, 38, 0.15)",
-    borderRadius: 12,
-    color: "#081126",
-    backgroundColor: "#fffdf5",
-  },
-  smallButton: {
-    alignSelf: "flex-start",
-    marginTop: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 10,
-    backgroundColor: "#081126",
-  },
-  error: {
-    marginTop: 10,
-    color: "#b42318",
-    fontSize: 13,
-  },
-  resetButton: {
-    alignItems: "center",
-    marginTop: 14,
-    paddingVertical: 14,
-  },
-  resetText: {
-    color: "#dc2626",
-    fontWeight: "800",
-  },
+  identity: { marginBottom: theme.spacing.md },
+  identityName: { color: theme.colors.text, fontSize: 21, fontWeight: "700" },
+  identityMeta: { marginTop: theme.spacing.xs, color: theme.colors.textMuted, fontSize: 12 },
+  actions: { flexDirection: "row", gap: theme.spacing.sm, marginBottom: theme.spacing.xl },
+  flexButton: { flex: 1 },
+  dataCard: { marginBottom: theme.spacing.xl },
+  row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  rowLabel: { color: theme.colors.textMuted, fontSize: 14 },
+  rowValue: { color: theme.colors.text, fontSize: 14, fontWeight: "700" },
+  syncCard: { marginBottom: theme.spacing.md },
+  cardTitle: { color: theme.colors.text, fontSize: 17, fontWeight: "700" },
+  help: { marginTop: theme.spacing.sm, color: theme.colors.textMuted, fontSize: 13, lineHeight: 19 },
+  pending: { marginTop: theme.spacing.md, color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
+  syncMessage: { marginTop: theme.spacing.sm, color: theme.colors.textSubtle, fontSize: 11 },
+  syncButton: { marginTop: theme.spacing.md },
+  error: { marginTop: theme.spacing.sm, color: theme.colors.danger, fontSize: 13 },
+  reset: { alignItems: "center", paddingVertical: theme.spacing.md },
+  resetText: { color: theme.colors.danger, fontSize: 13, fontWeight: "800" },
+  muted: { color: theme.colors.textMuted, fontSize: 14 },
 });

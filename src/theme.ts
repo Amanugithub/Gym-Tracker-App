@@ -1,0 +1,47 @@
+export const theme = {
+  colors: {
+    canvas: "#0e0e11",
+    background: "#131316",
+    surface: "#1f1f22",
+    surfaceLow: "#1b1b1e",
+    surfaceHigh: "#2a2a2d",
+    surfaceHighest: "#353438",
+    text: "#e4e1e6",
+    textMuted: "#c5c9ac",
+    textSubtle: "#8f9378",
+    border: "rgba(255, 255, 255, 0.08)",
+    borderStrong: "rgba(255, 255, 255, 0.14)",
+    borderActive: "rgba(202, 243, 0, 0.4)",
+    accent: "#caf300",
+    accentDim: "#b0d500",
+    accentText: "#2a3400",
+    danger: "#ff453a",
+    dangerSurface: "rgba(255, 59, 48, 0.12)",
+  },
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+    gutter: 16,
+  },
+  radii: {
+    sm: 4,
+    md: 8,
+    lg: 12,
+    xl: 16,
+    full: 999,
+  },
+  typography: {
+    display: { fontSize: 38, lineHeight: 42, fontWeight: "800" as const },
+    headline: { fontSize: 32, lineHeight: 38, fontWeight: "700" as const },
+    section: { fontSize: 22, lineHeight: 28, fontWeight: "600" as const },
+    body: { fontSize: 16, lineHeight: 24, fontWeight: "400" as const },
+    bodySmall: { fontSize: 14, lineHeight: 20, fontWeight: "400" as const },
+    label: { fontSize: 11, lineHeight: 14, fontWeight: "600" as const },
+    metric: { fontSize: 32, lineHeight: 36, fontWeight: "700" as const },
+  },
+} as const;
+
+export type ThemeColors = typeof theme.colors;
